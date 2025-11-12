@@ -1,5 +1,6 @@
 import { PropsWithChildren } from "react";
 import "./globals.css";
+import { ToastProvider } from "@/src";
 
 const RootLayout: React.FC<PropsWithChildren> = ({ children }) => {
   return (
@@ -17,10 +18,12 @@ const RootLayout: React.FC<PropsWithChildren> = ({ children }) => {
         />
       </head>
       <body className="relative bg-main-background">
-        <main>{children}</main>
+        <ToastProvider>
+          <main>{children}</main>
+        </ToastProvider>
       </body>
     </html>
   );
-}
+};
 
 export default RootLayout;

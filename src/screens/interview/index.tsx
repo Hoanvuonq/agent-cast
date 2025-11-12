@@ -15,7 +15,9 @@ export const InterviewScreen = () => {
           <h3 className="font-kode-mono text-[#A0A0A0] text-center xl:pt-[3vw] pt-[5vw] xl:text-[1.4vw] text-[3vw] font-thin">
             Your best online companion for Prediction market
           </h3>
+          <div className="xl:pt-[1vw] pt-[3vw] w-full">
           <SendEmailButton />
+          </div>
         </div>
       </div>
     </div>

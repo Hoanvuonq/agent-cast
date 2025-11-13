@@ -1,4 +1,4 @@
-export * from "./button";
+export * from "./sendEmailButton";
 export * from "./animatedPixelText";
 export * from "./header";
 export * from "./glassButton";
@@ -6,3 +6,4 @@ export * from "./card";
 export * from "./footer";
 export * from "./agentCast"
 export * from "./toastProvider"
+export * from './threeBackground'

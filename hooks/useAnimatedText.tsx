@@ -9,7 +9,7 @@ export const useAnimatedText = (
     return text.split("").map((char, index) => (
       <span
         key={index}
-        className="wave-char-css"
+        className="wave-char"
         style={{
           animationDelay: `${index * delayMultiplier}s`,
         }}

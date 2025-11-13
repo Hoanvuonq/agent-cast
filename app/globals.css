@@ -35,9 +35,18 @@ a,
 input[type="submit"] {
   cursor: url('/images/button/cursor.png') 4 4, auto !important;
 }
-.boxCanvas, canvas {
+.boxCanvas,
+canvas {
   width: 100vw !important;
-  height: 100vw !important;
+  height: 100vw !important; 
+}
+
+@media (max-width: 678px) {
+  .boxCanvas,
+  canvas {
+    width: 100vw !important;
+    height: 100vh !important; 
+  }
 }
 
 .font-kode-mono {

@@ -27,6 +27,14 @@ body {
   font-family: "Handjet", sans-serif;
   font-optical-sizing: auto;
 }
+html,
+body,
+button,
+a,
+[role="button"],
+input[type="submit"] {
+  cursor: url('/images/button/cursor.png') 4 4, auto !important;
+}
 
 
 .font-kode-mono {

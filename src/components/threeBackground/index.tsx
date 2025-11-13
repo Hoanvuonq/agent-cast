@@ -14,7 +14,6 @@ export type ThreeBackgroundProps = {
 export default function ThreeBackground({
   className = "fixed inset-0 -z-10",
   speed = 1.0,
-  // <<< 1. ĐÃ SỬA: Tăng Scale để khói trông lớn và dày hơn
   scale = 1.5,
   turb = 1.0,
   pixelRatioLimit = 2,
@@ -105,7 +104,6 @@ export default function ThreeBackground({
         
         float noise_val = f1*0.6 + f2*0.28 + f3*0.12;
         
-        // <<< 2. ĐÃ SỬA: Giảm 0.15 -> 0.1 để khói dày hơn (hiển thị nhiều noise hơn)
         float smoke = smoothstep(0.4, 0.9, (noise_val + 1.0) * 0.5); 
 
         float turbulence = u_turb * influence * fbm(npos*8.0 + t*0.8);
@@ -120,10 +118,6 @@ export default function ThreeBackground({
         float glow = exp(-dist*6.0) * 0.3 * (0.7 + f1*0.5);
         vec3 glowColor = vec3(0.0, 0.8, 0.5);
         col += glow * glowColor;
-
-        // <<< 3. ĐÃ SỬA: Tắt Vignette (tối viền) để khói lan full màn hình
-        // float vign = smoothstep(0.9, 0.3, length(pos));
-        // col *= vign;
         
         col = pow(col, vec3(0.9));
         
@@ -136,7 +130,10 @@ export default function ThreeBackground({
       const container = containerRef.current;
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioLimit));
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      
+      // Quan trọng: Dùng kích thước của container (div) thay vì window
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       container.appendChild(renderer.domElement);
 
@@ -149,7 +146,7 @@ export default function ThreeBackground({
         vertexShader,
         uniforms: {
           u_time: { value: 0.0 },
-          u_resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+          u_resolution: { value: new THREE.Vector2(container.clientWidth, container.clientHeight) },
           u_mouse: { value: new THREE.Vector2(0.5, 0.5) },
           u_mouse_velocity: { value: new THREE.Vector2(0, 0) },
           u_speed: { value: speed },
@@ -168,21 +165,33 @@ export default function ThreeBackground({
       stateRef.current.material = material;
 
       function onResize() {
-        if (!stateRef.current.renderer || !stateRef.current.material) return;
-        const w = window.innerWidth;
-        const h = window.innerHeight;
+        if (!stateRef.current.renderer || !stateRef.current.material || !containerRef.current) return;
+        
+        // Dùng kích thước của container (div) thay vì window
+        const w = containerRef.current.clientWidth;
+        const h = containerRef.current.clientHeight;
+        
         stateRef.current.renderer.setSize(w, h);
         stateRef.current.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioLimit));
         stateRef.current.material.uniforms.u_resolution.value.set(w, h);
       }
       window.addEventListener("resize", onResize, { passive: true });
 
+      // ======================================================
+      // === ĐÂY LÀ PHẦN SỬA LỖI LỆCH KHI ZOOM/DEPLOY ===
+      // ======================================================
       function setPointer(x: number, y: number) {
-        if (!stateRef.current.material) return;
-        const newX = x / window.innerWidth;
-        const newY = 1.0 - y / window.innerHeight;
+        if (!stateRef.current.material || !containerRef.current) return;
+
+        // 1. Lấy kích thước và vị trí thật của container (canvas)
+        const rect = containerRef.current.getBoundingClientRect();
+
+        const newX = (x - rect.left) / rect.width;
+        const newY = 1.0 - ((y - rect.top) / rect.height); // Y bị ngược
+
         stateRef.current.material.uniforms.u_mouse.value.set(newX, newY);
       }
+      
       function onPointerMove(e: PointerEvent) { setPointer(e.clientX, e.clientY); }
       function onTouchMove(e: TouchEvent) { if (e.touches && e.touches[0]) setPointer(e.touches[0].clientX, e.touches[0].clientY); }
       window.addEventListener("pointermove", onPointerMove, { passive: true });

@@ -12,7 +12,7 @@ export type ThreeBackgroundProps = {
 };
 
 export default function ThreeBackground({
-  className = "fixed inset-0 -z-10",
+  className = "fixed inset-0 -z-10 w-screen h-screen boxCanvas",
   speed = 1.0,
   scale = 1.5,
   turb = 1.0,
@@ -33,7 +33,6 @@ export default function ThreeBackground({
 
   useEffect(() => {
     let mounted = true;
-
     const vertexShader = `
       void main(){ 
         gl_Position = vec4(position, 1.0); 
@@ -128,12 +127,17 @@ export default function ThreeBackground({
     const setup = () => {
       if (!mounted || !containerRef.current) return;
       const container = containerRef.current;
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioLimit));
-      
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: false,
+      });
+      renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio || 1, pixelRatioLimit)
+      );
+
       // Quan trọng: Dùng kích thước của container (div) thay vì window
       renderer.setSize(container.clientWidth, container.clientHeight);
-      
+
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       container.appendChild(renderer.domElement);
 
@@ -146,7 +150,12 @@ export default function ThreeBackground({
         vertexShader,
         uniforms: {
           u_time: { value: 0.0 },
-          u_resolution: { value: new THREE.Vector2(container.clientWidth, container.clientHeight) },
+          u_resolution: {
+            value: new THREE.Vector2(
+              container.clientWidth,
+              container.clientHeight
+            ),
+          },
           u_mouse: { value: new THREE.Vector2(0.5, 0.5) },
           u_mouse_velocity: { value: new THREE.Vector2(0, 0) },
           u_speed: { value: speed },
@@ -165,41 +174,41 @@ export default function ThreeBackground({
       stateRef.current.material = material;
 
       function onResize() {
-        if (!stateRef.current.renderer || !stateRef.current.material || !containerRef.current) return;
-        
-        // Dùng kích thước của container (div) thay vì window
-        const w = containerRef.current.clientWidth;
-        const h = containerRef.current.clientHeight;
-        
-        stateRef.current.renderer.setSize(w, h);
-        stateRef.current.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioLimit));
+        if (!stateRef.current.renderer || !stateRef.current.material) return;
+        const canvas = stateRef.current.renderer.domElement;
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        stateRef.current.renderer.setSize(w, h, false);
         stateRef.current.material.uniforms.u_resolution.value.set(w, h);
       }
-      window.addEventListener("resize", onResize, { passive: true });
-
-      // ======================================================
-      // === ĐÂY LÀ PHẦN SỬA LỖI LỆCH KHI ZOOM/DEPLOY ===
-      // ======================================================
+      
       function setPointer(x: number, y: number) {
-        if (!stateRef.current.material || !containerRef.current) return;
-
-        // 1. Lấy kích thước và vị trí thật của container (canvas)
-        const rect = containerRef.current.getBoundingClientRect();
-
+        if (!stateRef.current.renderer || !stateRef.current.material) return;
+        const rect = stateRef.current.renderer.domElement.getBoundingClientRect();
         const newX = (x - rect.left) / rect.width;
-        const newY = 1.0 - ((y - rect.top) / rect.height); // Y bị ngược
-
+        const newY = 1.0 - (y - rect.top) / rect.height;
         stateRef.current.material.uniforms.u_mouse.value.set(newX, newY);
       }
       
-      function onPointerMove(e: PointerEvent) { setPointer(e.clientX, e.clientY); }
-      function onTouchMove(e: TouchEvent) { if (e.touches && e.touches[0]) setPointer(e.touches[0].clientX, e.touches[0].clientY); }
+
+      function onPointerMove(e: PointerEvent) {
+        setPointer(e.clientX, e.clientY);
+      }
+      function onTouchMove(e: TouchEvent) {
+        if (e.touches && e.touches[0])
+          setPointer(e.touches[0].clientX, e.touches[0].clientY);
+      }
       window.addEventListener("pointermove", onPointerMove, { passive: true });
       window.addEventListener("touchmove", onTouchMove, { passive: true });
 
       const clock = new THREE.Clock();
       function animate() {
-        if (!stateRef.current.renderer || !stateRef.current.scene || !stateRef.current.camera || !stateRef.current.material) {
+        if (
+          !stateRef.current.renderer ||
+          !stateRef.current.scene ||
+          !stateRef.current.camera ||
+          !stateRef.current.material
+        ) {
           rafRef.current = requestAnimationFrame(animate);
           return;
         }
@@ -213,7 +222,10 @@ export default function ThreeBackground({
         prevMouse.current.copy(currentMouse);
         material.uniforms.u_mouse_velocity.value.copy(velocity.current);
         material.uniforms.u_time.value = clock.getElapsedTime();
-        stateRef.current.renderer.render(stateRef.current.scene, stateRef.current.camera);
+        stateRef.current.renderer.render(
+          stateRef.current.scene,
+          stateRef.current.camera
+        );
         rafRef.current = requestAnimationFrame(animate);
       }
       rafRef.current = requestAnimationFrame(animate);
@@ -232,7 +244,9 @@ export default function ThreeBackground({
           }
           stateRef.current.material?.dispose();
           geometry.dispose();
-        } catch (e) { console.error("Lỗi khi dọn dẹp Three.js:", e); }
+        } catch (e) {
+          console.error("Lỗi khi dọn dẹp Three.js:", e);
+        }
         stateRef.current.renderer = null;
         stateRef.current.material = null;
         stateRef.current.scene = null;

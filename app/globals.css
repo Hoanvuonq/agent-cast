@@ -35,13 +35,14 @@ a,
 input[type="submit"] {
   cursor: url('/images/button/cursor.png') 4 4, auto !important;
 }
-
+.boxCanvas, canvas {
+  width: 100vw !important;
+  height: 100vw !important;
+}
 
 .font-kode-mono {
   font-family: "Kode Mono", monospace !important;
 }
-
-
 
 .pixel-text {
   color: #FFFFFF;

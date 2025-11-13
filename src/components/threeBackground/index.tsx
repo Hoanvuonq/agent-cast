@@ -33,6 +33,7 @@ export default function ThreeBackground({
 
   useEffect(() => {
     let mounted = true;
+
     const vertexShader = `
       void main(){ 
         gl_Position = vec4(position, 1.0); 
@@ -49,7 +50,6 @@ export default function ThreeBackground({
       uniform float u_scale;
       uniform float u_turb;
 
-      // ... (Các hàm hash2, noise, fbm giữ nguyên) ...
       vec2 hash2(vec2 p) {
         p = vec2(dot(p, vec2(127.1,311.7)),
                  dot(p, vec2(269.5,183.3)));
@@ -82,44 +82,44 @@ export default function ThreeBackground({
         vec2 pos = (uv - 0.5) * vec2(u_resolution.x/u_resolution.y, 1.0);
         vec2 npos = pos * u_scale;
         vec2 mousePos = (u_mouse - 0.5) * vec2(u_resolution.x/u_resolution.y, 1.0);
-        
+
         vec2 diff = pos - mousePos;
         float dist = length(diff);
-        
-        float influence = exp(-dist*15.0) * 1.0; 
+
+        float influence = exp(-dist*15.0);
         float t = u_time * u_speed;
-        
+
         vec2 vel = u_mouse_velocity * vec2(u_resolution.x/u_resolution.y, 1.0);
-        float trail_strength = 5.0; 
+        float trail_strength = 5.0;
         npos -= vel * trail_strength * influence;
 
         float angle = atan(diff.y, diff.x);
         float flow = cos(angle*2.0 + t*0.6) * 0.05;
-        npos += (normalize(diff + 0.0001) * flow) * (0.5 + influence * 1.0);
-        
+        npos += (normalize(diff + 0.0001) * flow) * (0.5 + influence);
+
         float f1 = fbm(npos + vec2(t*0.05, -t*0.02));
         float f2 = fbm(npos*1.8 + vec2(-t*0.1, t*0.08));
         float f3 = fbm(npos*3.6 + vec2(t*0.12, -t*0.06));
-        
+
         float noise_val = f1*0.6 + f2*0.28 + f3*0.12;
-        
-        float smoke = smoothstep(0.4, 0.9, (noise_val + 1.0) * 0.5); 
+
+        float smoke = smoothstep(0.4, 0.9, (noise_val + 1.0) * 0.5);
 
         float turbulence = u_turb * influence * fbm(npos*8.0 + t*0.8);
         smoke += turbulence * 0.45;
-        
+
         vec3 base = vec3(0.02, 0.05, 0.04);
         vec3 smokeColorDark = vec3(0.0, 0.5, 0.3);
         vec3 smokeColorLight = vec3(0.1, 0.8, 0.5);
-        vec3 smokeColor = mix(smokeColorDark, smokeColorLight, f2*0.5 + f3*0.2); 
+        vec3 smokeColor = mix(smokeColorDark, smokeColorLight, f2*0.5 + f3*0.2);
         vec3 col = mix(base, smokeColor, clamp(smoke, 0.0, 1.0));
-        
+
         float glow = exp(-dist*6.0) * 0.3 * (0.7 + f1*0.5);
         vec3 glowColor = vec3(0.0, 0.8, 0.5);
         col += glow * glowColor;
-        
+
         col = pow(col, vec3(0.9));
-        
+
         gl_FragColor = vec4(col, 1.0);
       }
     `;
@@ -127,17 +127,15 @@ export default function ThreeBackground({
     const setup = () => {
       if (!mounted || !containerRef.current) return;
       const container = containerRef.current;
-      const renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: false,
-      });
-      renderer.setPixelRatio(
-        Math.min(window.devicePixelRatio || 1, pixelRatioLimit)
-      );
 
-      // Quan trọng: Dùng kích thước của container (div) thay vì window
-      renderer.setSize(container.clientWidth, container.clientHeight);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+      const dpr = Math.min(window.devicePixelRatio || 1, pixelRatioLimit);
+      renderer.setPixelRatio(dpr);
 
+      // Size theo CSS pixels từ container (đã có w-screen h-screen / boxCanvas)
+      const cssW = container.clientWidth;
+      const cssH = container.clientHeight;
+      renderer.setSize(cssW, cssH, false); // false => không đổi style width/height
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       container.appendChild(renderer.domElement);
 
@@ -150,12 +148,8 @@ export default function ThreeBackground({
         vertexShader,
         uniforms: {
           u_time: { value: 0.0 },
-          u_resolution: {
-            value: new THREE.Vector2(
-              container.clientWidth,
-              container.clientHeight
-            ),
-          },
+          // Dùng device pixels (canvas.width/height) để khớp gl_FragCoord
+          u_resolution: { value: new THREE.Vector2(renderer.domElement.width, renderer.domElement.height) },
           u_mouse: { value: new THREE.Vector2(0.5, 0.5) },
           u_mouse_velocity: { value: new THREE.Vector2(0, 0) },
           u_speed: { value: speed },
@@ -174,58 +168,57 @@ export default function ThreeBackground({
       stateRef.current.material = material;
 
       function onResize() {
-        if (!stateRef.current.renderer || !stateRef.current.material) return;
+        if (!stateRef.current.renderer || !stateRef.current.material || !containerRef.current) return;
+
         const canvas = stateRef.current.renderer.domElement;
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
-        stateRef.current.renderer.setSize(w, h, false);
-        stateRef.current.material.uniforms.u_resolution.value.set(w, h);
+        const dpr = Math.min(window.devicePixelRatio || 1, pixelRatioLimit);
+        stateRef.current.renderer.setPixelRatio(dpr);
+
+        // Kích thước hiển thị (CSS pixels) lấy từ container
+        const cssW = containerRef.current.clientWidth;
+        const cssH = containerRef.current.clientHeight;
+
+        stateRef.current.renderer.setSize(cssW, cssH, false);
+
+        // Cập nhật u_resolution = device pixels của canvas
+        stateRef.current.material.uniforms.u_resolution.value.set(canvas.width, canvas.height);
       }
-      
+      window.addEventListener("resize", onResize, { passive: true });
+
       function setPointer(x: number, y: number) {
         if (!stateRef.current.renderer || !stateRef.current.material) return;
-        const rect = stateRef.current.renderer.domElement.getBoundingClientRect();
-        const newX = (x - rect.left) / rect.width;
-        const newY = 1.0 - (y - rect.top) / rect.height;
-        stateRef.current.material.uniforms.u_mouse.value.set(newX, newY);
-      }
-      
 
-      function onPointerMove(e: PointerEvent) {
-        setPointer(e.clientX, e.clientY);
+        // Lấy theo CSS pixels từ canvas hiển thị
+        const rect = stateRef.current.renderer.domElement.getBoundingClientRect();
+        const nx = (x - rect.left) / rect.width;
+        const ny = 1.0 - (y - rect.top) / rect.height;
+        stateRef.current.material.uniforms.u_mouse.value.set(nx, ny);
       }
+      function onPointerMove(e: PointerEvent) { setPointer(e.clientX, e.clientY); }
       function onTouchMove(e: TouchEvent) {
-        if (e.touches && e.touches[0])
-          setPointer(e.touches[0].clientX, e.touches[0].clientY);
+        if (e.touches && e.touches[0]) setPointer(e.touches[0].clientX, e.touches[0].clientY);
       }
       window.addEventListener("pointermove", onPointerMove, { passive: true });
       window.addEventListener("touchmove", onTouchMove, { passive: true });
 
       const clock = new THREE.Clock();
       function animate() {
-        if (
-          !stateRef.current.renderer ||
-          !stateRef.current.scene ||
-          !stateRef.current.camera ||
-          !stateRef.current.material
-        ) {
+        if (!stateRef.current.renderer || !stateRef.current.scene || !stateRef.current.camera || !stateRef.current.material) {
           rafRef.current = requestAnimationFrame(animate);
           return;
         }
-        const material = stateRef.current.material;
-        const currentMouse = material.uniforms.u_mouse.value;
+        const mat = stateRef.current.material;
+        const currentMouse = mat.uniforms.u_mouse.value;
         const vX = currentMouse.x - prevMouse.current.x;
         const vY = currentMouse.y - prevMouse.current.y;
         velocity.current.x += vX;
         velocity.current.y += vY;
         velocity.current.multiplyScalar(0.95);
         prevMouse.current.copy(currentMouse);
-        material.uniforms.u_mouse_velocity.value.copy(velocity.current);
-        material.uniforms.u_time.value = clock.getElapsedTime();
-        stateRef.current.renderer.render(
-          stateRef.current.scene,
-          stateRef.current.camera
-        );
+        mat.uniforms.u_mouse_velocity.value.copy(velocity.current);
+        mat.uniforms.u_time.value = clock.getElapsedTime();
+
+        stateRef.current.renderer.render(stateRef.current.scene, stateRef.current.camera);
         rafRef.current = requestAnimationFrame(animate);
       }
       rafRef.current = requestAnimationFrame(animate);
@@ -255,13 +248,12 @@ export default function ThreeBackground({
       };
       stateRef.current.cleanup = cleanup;
     };
+
     setup();
 
     return () => {
       mounted = false;
-      if (stateRef.current.cleanup) {
-        stateRef.current.cleanup();
-      }
+      if (stateRef.current.cleanup) stateRef.current.cleanup();
     };
   }, [speed, scale, turb, pixelRatioLimit]);
 

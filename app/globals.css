@@ -45,7 +45,7 @@ canvas {
   .boxCanvas,
   canvas {
     width: 100vw !important;
-    height: 100vh !important; 
+    height: 100vh !important; /* dưới 678px thì full chiều cao */
   }
 }
 
